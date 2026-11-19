@@ -99,3 +99,24 @@ Os mutantes sobreviventes devem ser considerados individualmente, pois podem rep
 - Testes criados: **25 | aprovados: 24 | reprovados: 1 falha esperada**
 - Cobertura geral de linhas do backend: **2,41%**
 - Score de mutação do backend: **87,23%** (41 mutantes mortos de 47).
+
+### Avaliação – Sabotagem Controlada (RF04)
+
+Foi realizada uma alteração proposital no componente Users.tsx, substituindo o texto do botão "Criar" por "Salvar".
+
+**Resultado:** o teste unitário falhou, pois não encontrou o botão com o nome esperado "Criar", identificando corretamente a alteração realizada.
+
+**Conclusão:** a sabotagem foi detectada com sucesso, demonstrando que o teste RF04 verifica corretamente o texto e a presença dos elementos esperados no formulário.
+
+### Revisão do teste – RF04
+
+O teste foi revisado seguindo o padrão AAA (Arrange, Act e Assert). Foi verificado se a preparação do cenário, a interação do usuário e as validações estavam corretas.
+
+**Pontos verificados:**
+- Simulação da resposta da API.
+- Abertura do formulário de cadastro.
+- Verificação dos campos Nome e Email.
+- Verificação do botão Criar.
+- Utilização de seletores acessíveis.
+
+**Resultado da revisão:** Não foram identificados problemas que exigissem ajustes no teste. Após a restauração da sabotagem, o teste foi executado novamente e apresentou aprovação.
