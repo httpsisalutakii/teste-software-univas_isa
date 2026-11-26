@@ -1,122 +1,35 @@
-# Relatório — Testes unitários com IA generativa
+# Relatório de testes de integração
 
-**Aluno(s):**
-**Ferramenta de IA utilizada:** (Claude Code / Codex / GitHub Copilot)
-**Unidade testada:** (ex.: `backend/src/utils/taskRules.ts` — RN01)
+Escopo: API03, API04, API05, RF08 e RF09, conforme `docs/especificacao.md`. A tabela de casos do prompt veio como marcador (`[COLE AQUI SUA TABELA DE CASOS]`); os casos abaixo foram derivados dos contratos documentados no repositório.
 
-## 1. Tabela de casos (elaborada antes de usar a IA)
+| ID | Caso | Estado inicial | Requisição | Resposta esperada | Efeito no banco | Resultado |
+|---|---|---|---|---|---|---|
+| API03-01 | Excluir categoria vazia | Categoria existente sem tarefas | `DELETE /api/categories/:id` | 200, `success: true` | Categoria removida | Não executado: autenticação PostgreSQL P1000 |
+| API03-02 | Excluir categoria com tarefa | Categoria e tarefa associada existentes | `DELETE /api/categories/:id` | 400, `success: false` | Categoria e tarefa mantidas | Não executado: autenticação PostgreSQL P1000 |
+| API03-03 | Excluir categoria inexistente | Nenhuma categoria com o ID | `DELETE /api/categories/id-inexistente` | 404, `success: false` | Banco permanece sem categorias | Não executado: autenticação PostgreSQL P1000 |
+| API04-01 | Criar categoria com nome inédito | Banco sem categorias | `POST /api/categories` com `Faculdade` | 201, `success: true` e categoria na resposta | Categoria gravada | Não executado: autenticação PostgreSQL P1000 |
+| API04-02 | Rejeitar duplicata após normalização | Categoria ` trabalho ` existente | `POST /api/categories` com `Trabalho` | 409, `success: false` | Nenhuma categoria adicional | Não executado: autenticação PostgreSQL P1000; teste preparado como `it.fails` até confirmação |
+| API05-01 | Transição permitida | Tarefa em `PENDING` | `PUT /api/tasks/:id` com `IN_PROGRESS` | 200 e status `IN_PROGRESS` na resposta | Status atualizado | Não executado: autenticação PostgreSQL P1000 |
+| API05-02 | Transição proibida | Tarefa em `COMPLETED` | `PUT /api/tasks/:id` com `PENDING` | 400, `success: false` | Status permanece `COMPLETED` | Não executado: autenticação PostgreSQL P1000; teste preparado como `it.fails` até confirmação |
+| API05-03 | Atualizar tarefa inexistente | Nenhuma tarefa com o ID | `PUT /api/tasks/id-inexistente` com `IN_PROGRESS` | 404, `success: false` | Nenhum registro criado/alterado | Não executado: autenticação PostgreSQL P1000 |
+| RF08-01 | Criar usuário e atualizar lista | Lista vazia; POST retorna sucesso | Preencher Nome/Email e clicar `Criar` | Envio via POST; formulário fecha e lista exibe usuário | MSW registra `{ name, email }`; sem banco real no frontend | Aprovado |
+| RF09-01 | Tratar email duplicado | Lista vazia; POST retorna 409 | Preencher formulário e clicar `Criar` | Mensagem `Email já cadastrado`; formulário e valores preservados | MSW responde 409; sem banco real no frontend | Falha esperada (`it.fails`): componente mostra `Erro ao salvar usuário` |
 
-| # | Entrada | Resultado esperado | Técnica (partição, valor-limite, inválido) | Regra |
-|---|---------|--------------------|--------------------------------------------|-------|
-| 1 |         |                    |                                            |       |
+## Defeitos encontrados (teste, comportamento esperado vs. obtido)
 
-## 2. Prompt utilizado
+- **RF09-01:** esperado `Email já cadastrado` e formulário preservado após HTTP 409; comportamento obtido: mensagem genérica `Erro ao salvar usuário`. O teste de integração usa `it.fails` para manter o contrato como oráculo.
+- **API04-02:** a implementação observada não normaliza o nome antes de criar; a especificação exige conflito entre ` trabalho ` e `Trabalho`. O caso está preparado com `it.fails`, mas a execução da suíte backend foi impedida antes dos testes pelo erro P1000. Portanto, divergência provável pela inspeção, ainda não confirmada por execução integrada.
+- **API05-02:** a implementação observada atualiza diretamente o status sem validar a RN01; a especificação exige 400 e preservação de `COMPLETED`. O caso está preparado com `it.fails`, mas a execução da suíte backend foi impedida antes dos testes pelo erro P1000. Portanto, divergência provável pela inspeção, ainda não confirmada por execução integrada.
 
-```
-(cole aqui o prompt enviado ao agente)
-```
+## Problemas e ajustes feitos durante a geração
 
-## 3. Revisão do teste gerado
+- A tabela de casos mencionada no prompt não foi preenchida. Os casos foram derivados somente das regras API03–API05 e RF08–RF09 de `docs/especificacao.md`.
+- `docker compose up -d postgres` iniciou o container, mas `npm run test:integration` no backend falhou durante o `prisma db push --force-reset --skip-generate`: `P1000: Authentication failed` para o usuário `postgres` em `teste_software_test_db`. Nenhum teste backend foi executado; não foi feita alteração no container, credenciais, volume ou código-base.
+- `npm run test:integration` no frontend passou: 2 arquivos, 2 testes aprovados e 1 falha esperada (RF09).
+- Nenhum arquivo de `src/`, configuração, dependência ou schema foi alterado. Nenhuma sabotagem foi aplicada.
 
-| Problema encontrado no teste gerado | Ajuste solicitado ou realizado |
-|-------------------------------------|--------------------------------|
-|                                     |                                |
+## Sugestões de sabotagem manual
 
-## 4. Resultados
-
-- Testes criados: ___ | aprovados: ___ | reprovados: ___
-- Cobertura de linhas da unidade: ___ %
-- Score de mutação (backend) ou resultado da sabotagem manual (frontend): ___
-
-## 5. Defeitos encontrados (divergências entre especificação e código)
-
-| Regra | Comportamento especificado | Comportamento observado | Teste que evidencia |
-|-------|----------------------------|-------------------------|---------------------|
-|       |                            |                         |                     |
-
-### RN01 — Transição de status (canTransition)
-
-| ID | Status atual (from) | Status desejado (to) | Resultado esperado |
-|---|---|---|---|
-| RN01-01 | PENDING | PENDING | |
-| RN01-02 | PENDING | IN_PROGRESS | |
-| RN01-03 | PENDING | COMPLETED | |
-| RN01-04 | PENDING | CANCELLED | |
-| RN01-05 | IN_PROGRESS | PENDING | |
-| RN01-06 | IN_PROGRESS | IN_PROGRESS | |
-| RN01-07 | IN_PROGRESS | COMPLETED | |
-| RN01-08 | IN_PROGRESS | CANCELLED | |
-| RN01-09 | COMPLETED | PENDING | |
-| RN01-10 | COMPLETED | IN_PROGRESS | |
-| RN01-11 | COMPLETED | COMPLETED | |
-| RN01-12 | COMPLETED | CANCELLED | |
-| RN01-13 | CANCELLED | PENDING | |
-| RN01-14 | CANCELLED | IN_PROGRESS | |
-| RN01-15 | CANCELLED | COMPLETED | |
-| RN01-16 | CANCELLED | CANCELLED | |
-
-
-### RN03 — Normalização de nomes (normalizeName)
-
-| ID | Entrada | Resultado esperado |
-|---|---|---|
-| RN03-01 | "  Maria  " | |
-| RN03-02 | "João   da   Silva" | |
-| RN03-03 | "Ana\tMaria" | |
-| RN03-04 | "Ana\nMaria" | |
-| RN03-05 | "MARIA SILVA" | |
-| RN03-06 | "  TRABALHO   da\tFACULDADE  " | |
-
-### Avaliação dos testes de mutação — Stryker
-
-Foi executado o comando `npm run test:mutation` para avaliar a qualidade dos testes unitários.
-
-**Resultado geral:**
-- Total de mutantes: 47
-- Mutantes mortos: 41
-- Mutantes sobreviventes: 6
-- Mutantes com timeout: 0
-- Mutation score: 87,23%
-
-**Resultados por regra:**
-- RN03 (`normalizeName`): 100% de mutation score.
-- RN01 (`canTransition`): 83,78% de mutation score.
-
-Os seis mutantes sobreviventes foram identificados na condição responsável por bloquear transições a partir dos status `COMPLETED` e `CANCELLED`, na função `canTransition`.
-
-Esses mutantes serão analisados para verificar se representam comportamentos não cobertos pelos testes ou alterações equivalentes, que não modificam o resultado observável da função.
-
-**Análise dos mutantes sobreviventes da RN01**
-
-Os seis mutantes sobreviventes foram encontrados na primeira condição da função `canTransition`, responsável por bloquear transições quando o status atual é `COMPLETED` ou `CANCELLED`.
-
-A análise da implementação também identificou um defeito: a transição de `PENDING` para `CANCELLED` é permitida pela especificação, mas a função retorna `false`.
-
-Esse comportamento foi registrado no teste RN01-04 utilizando `it.fails`, preservando o resultado esperado definido pela regra de negócio.
-
-Os mutantes sobreviventes devem ser considerados individualmente, pois podem representar alterações não detectadas pelos testes ou mutantes equivalentes. Não foram realizadas alterações na implementação original.
-
-- Testes criados: **25 | aprovados: 24 | reprovados: 1 falha esperada**
-- Cobertura geral de linhas do backend: **2,41%**
-- Score de mutação do backend: **87,23%** (41 mutantes mortos de 47).
-
-### Avaliação – Sabotagem Controlada (RF04)
-
-Foi realizada uma alteração proposital no componente Users.tsx, substituindo o texto do botão "Criar" por "Salvar".
-
-**Resultado:** o teste unitário falhou, pois não encontrou o botão com o nome esperado "Criar", identificando corretamente a alteração realizada.
-
-**Conclusão:** a sabotagem foi detectada com sucesso, demonstrando que o teste RF04 verifica corretamente o texto e a presença dos elementos esperados no formulário.
-
-### Revisão do teste – RF04
-
-O teste foi revisado seguindo o padrão AAA (Arrange, Act e Assert). Foi verificado se a preparação do cenário, a interação do usuário e as validações estavam corretas.
-
-**Pontos verificados:**
-- Simulação da resposta da API.
-- Abertura do formulário de cadastro.
-- Verificação dos campos Nome e Email.
-- Verificação do botão Criar.
-- Utilização de seletores acessíveis.
-
-**Resultado da revisão:** Não foram identificados problemas que exigissem ajustes no teste. Após a restauração da sabotagem, o teste foi executado novamente e apresentou aprovação.
+- `backend/src/controllers/categoryController.ts`, linha 89: normalizar incorretamente ou remover a verificação de exclusividade para que API04-02 deixe criar o nome duplicado após normalização.
+- `backend/src/controllers/taskController.ts`, linha 178: remover a validação de transição de status; API05-02 deve detectar a aceitação de `COMPLETED` para `PENDING` quando o backend puder ser executado.
+- `frontend/src/components/Users.tsx`, linha 77: alterar a mensagem de erro para uma mensagem incorreta; RF09 deve detectar a ausência de `Email já cadastrado`.
